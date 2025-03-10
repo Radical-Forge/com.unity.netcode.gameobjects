@@ -158,8 +158,14 @@ namespace Unity.Netcode.Editor
 
             var behaviour = (NetworkBehaviour)target;
 
-            // Only server can MODIFY. So allow modification if network is either not running or we are server
-            if (behaviour.IsBehaviourEditable())
+            // Depending on write permissions either OWNER or SERVER can MODIFY.
+            // Allow if the client can commit the network variable or if we are not running the application (Edit mode)
+            bool canClientCommitToNetworkVariable = behaviour.NetworkManager != null &&
+                                                    networkVariable.CanClientWrite(behaviour.NetworkManager.LocalClientId);
+            
+            if (canClientCommitToNetworkVariable || 
+                !behaviour.NetworkObject ||
+                behaviour.NetworkObject.NetworkManager == null)
             {
                 if (type == typeof(int))
                 {
@@ -211,14 +217,17 @@ namespace Unity.Netcode.Editor
                 }
                 else
                 {
-                    EditorGUILayout.LabelField("Type not renderable");
+                    // whilst we can render any type that falls into here, it would be preferable to see its string representation
+                    GUI.enabled = false;
+                    EditorGUILayout.TextField(variableName + " [NotRenderable]", val.ToString());
+                    GUI.enabled = true;
                 }
 
                 networkVariable.Value = (T)val;
             }
             else
             {
-                EditorGUILayout.LabelField(variableName, EditorStyles.wordWrappedLabel);
+                EditorGUILayout.LabelField(variableName, EditorStyles.label);
                 EditorGUILayout.SelectableLabel(val.ToString(), EditorStyles.wordWrappedLabel);
             }
             GUILayout.Label(m_NetworkVariableLabelGuiContent, EditorStyles.miniLabel, GUILayout.Width(EditorStyles.miniLabel.CalcSize(m_NetworkVariableLabelGuiContent).x));
